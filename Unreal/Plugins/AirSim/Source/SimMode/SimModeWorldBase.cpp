@@ -69,8 +69,7 @@ std::unique_ptr<ASimModeWorldBase::PhysicsEngineBase> ASimModeWorldBase::createP
         else {
             physics_engine.reset(new msr::airlib::FastPhysicsEngine());
         }
-
-        physics_engine->setWind(getSettings().wind);
+        physics_engine->initWindModule(getSettings().wind_data_path, getSettings().data_update_period, getSettings().default_wind, getSettings().wind_log_enable);
     }
     else if (physics_engine_name == "ExternalPhysicsEngine") {
         physics_engine.reset(new msr::airlib::ExternalPhysicsEngine());
@@ -127,7 +126,10 @@ void ASimModeWorldBase::continueForFrames(uint32_t frames)
     }
     UGameplayStatics::SetGamePaused(this->GetWorld(), true);
 }
-
+void ASimModeWorldBase::initWindModule(const std::string dataPath, const float updateInterval, const msr::airlib::Vector3r& defaultWind, const bool logEnable) const
+{
+    physics_engine_->initWindModule(dataPath, updateInterval, defaultWind, logEnable);
+}
 void ASimModeWorldBase::setWind(const msr::airlib::Vector3r& wind) const
 {
     physics_engine_->setWind(wind);

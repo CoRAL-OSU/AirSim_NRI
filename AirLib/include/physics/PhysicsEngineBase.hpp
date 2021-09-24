@@ -27,7 +27,18 @@ namespace airlib
             //default nothing to report for physics engine
         }
 
-        virtual void setWind(const Vector3r& wind) { unused(wind); };
+        virtual void setWind(const Vector3r& wind)
+        {
+            unused(wind);
+        }
+        
+        virtual void initWindModule(const std::string dataPath, const float updateInterval, const msr::airlib::Vector3r& defaultWind, const bool logEnable)
+        {
+            unused(dataPath);
+            unused(updateInterval);
+            unused(defaultWind);
+            unused(logEnable);
+        }
     };
 }
 } //namespace

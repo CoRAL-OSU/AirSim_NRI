@@ -398,9 +398,14 @@ namespace airlib
         float speed_unit_factor = 1.0f;
         std::string speed_unit_label = "m\\s";
         std::map<std::string, std::shared_ptr<SensorSetting>> sensor_defaults;
-        Vector3r wind = Vector3r::Zero();
         std::map<std::string, CameraSetting> external_cameras;
 
+        // Spatial - temporal wind
+        std::string wind_data_path = "";
+        Vector3r default_wind = Vector3r::Zero();
+        float data_update_period = 5;
+        bool wind_log_enable = false;
+        
         std::string settings_text_ = "";
 
     public: //methods
@@ -1152,7 +1157,14 @@ namespace airlib
                 // Wind Settings
                 Settings child_json;
                 if (settings_json.getChild("Wind", child_json)) {
-                    wind = createVectorSetting(child_json, wind);
+                    wind_data_path = child_json.getString("WindDataPath", wind_data_path);
+                    data_update_period = child_json.getFloat("UpdatePeriod", data_update_period);
+                    wind_log_enable = child_json.getBool("EnableLog", wind_log_enable);
+
+                    Settings wind_child_json;
+                    if (child_json.getChild("DefaultWind", wind_child_json)) {
+                        default_wind = createVectorSetting(wind_child_json, default_wind);
+                    }
                 }
             }
         }

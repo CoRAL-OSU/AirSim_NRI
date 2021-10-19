@@ -130,6 +130,10 @@ void ASimModeWorldBase::initWindModule(const std::string dataPath, const float u
 {
     physics_engine_->initWindModule(dataPath, updateInterval, defaultWind, logEnable);
 }
+msr::airlib::Vector3r ASimModeWorldBase::getLocalWind(const msr::airlib::Vector3r& position) const
+{
+    return physics_engine_->getWind(position);
+}
 void ASimModeWorldBase::setWind(const msr::airlib::Vector3r& wind) const
 {
     physics_engine_->setWind(wind);

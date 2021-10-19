@@ -310,6 +310,12 @@ void ASimModeBase::setWind(const msr::airlib::Vector3r& wind) const
     throw std::domain_error("setWind not implemented by SimMode");
 }
 
+msr::airlib::Vector3r ASimModeBase::getLocalWind(const msr::airlib::Vector3r& position) const
+{
+    unused(position);
+    throw std::domain_error("getLocalWind not implemented by SimMode");
+}
+
 void ASimModeBase::initWindModule(const std::string dataPath, const float updateInterval, const msr::airlib::Vector3r& defaultWind, const bool logEnable) const
 {
     unused(dataPath);

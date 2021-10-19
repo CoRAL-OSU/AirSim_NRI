@@ -30,6 +30,7 @@
 #include "physics/World.hpp"
 #include "sensors/SensorCollection.hpp"
 #include "vehicles/multirotor/api/MultirotorApiBase.hpp"
+#include "api/WorldSimApiBase.hpp"
 
 //sensors
 #include "sensors/barometer/BarometerBase.hpp"
@@ -122,7 +123,7 @@ namespace airlib
             sim_time_us_ = clock()->nowNanos() / 1000;
         }
 
-        //update sensors in PX4 stack
+        //update sensors in PX4 stack and send wind to QGC (for now)
         virtual void update() override
         {
             try {
@@ -152,6 +153,14 @@ namespace airlib
                         return;
                     }
                 }
+
+                if(now - last_wind_time_ >= 3E5) {
+                    // Update wind every 1 second (1e6 us)
+                    auto wind = world_->getWind(getPosition());
+                    sendWindCov(wind);
+
+                    last_wind_time_ = now;
+                } 
 
                 last_update_time_ = now;
 
@@ -348,14 +357,16 @@ namespace airlib
 
         void onArmed()
         {
+            addStatusMessage("onArmed called");
             if (connection_info_.logs.size() > 0 && mav_vehicle_ != nullptr) {
+                addStatusMessage("first if statement");
                 auto con = mav_vehicle_->getConnection();
                 if (con != nullptr) {
                     if (log_ != nullptr) {
                         log_->close();
                         log_ = nullptr;
                     }
-
+                    addStatusMessage("On armed try block");
                     try {
                         std::time_t t = std::time(0); // get time now
                         std::tm* now = std::localtime(&t);
@@ -713,10 +724,13 @@ namespace airlib
 
         void telemtry_thread()
         {
+            addStatusMessage(std::string("Starting telemetry thread!"));
             while (log_ != nullptr) {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 writeTelemetry(1);
+                addStatusMessage(std::string("Telemetry written!"));
             }
+                        addStatusMessage(std::string("Exiting telemetry thread!"));
         }
 
         virtual float getCommandPeriod() const override
@@ -962,16 +976,21 @@ namespace airlib
             addStatusMessage("Waiting for mavlink vehicle...");
             connecting_ = true;
             createMavConnection(connection_info_);
+            addStatusMessage("Created connection!");
             if (mav_vehicle_ != nullptr) {
+                addStatusMessage("mav_vehicle not null!");
                 connectToLogViewer();
                 connectToQGC();
+                addStatusMessage("Attempted to connect to QGC!");
             }
 
             if (connecting_) {
                 // only set connected if we haven't already been told to disconnect.
                 connecting_ = false;
                 connected_ = true;
+                addStatusMessage("Connected!!!");
             }
+            addStatusMessage("Exiting connect_thread");
         }
 
         virtual void close()
@@ -1200,11 +1219,14 @@ namespace airlib
 
         bool connectToQGC()
         {
+            addStatusMessage("Inside ConnectToQGC");
             if (connection_info_.qgc_ip_address.size() > 0) {
                 std::shared_ptr<mavlinkcom::MavLinkConnection> connection;
                 createProxy("QGC", connection_info_.qgc_ip_address, connection_info_.qgc_ip_port, connection_info_.local_host_ip, qgc_proxy_, connection);
+                addStatusMessage("Attempting to link QGC");
                 if (!sendTestMessage(qgc_proxy_)) {
                     // error talking to QGC, so don't keep trying, and close the connection also.
+                    addStatusMessage("Failed to link QGC");
                     qgc_proxy_->getConnection()->close();
                     qgc_proxy_ = nullptr;
                 }
@@ -1366,6 +1388,7 @@ namespace airlib
                                                                                             connection_info_.control_port_remote);
                         }
                         mav_vehicle_->connect(gcsConnection);
+                        addStatusMessage("Connected to gcs");
                         // need to try and send something to make sure the connection is good.
                         mav_vehicle_->setMessageInterval(mavlinkcom::MavLinkHomePosition::kMessageId, 1);
                         break;
@@ -1382,6 +1405,12 @@ namespace airlib
 
                 if (mav_vehicle_->getConnection() != nullptr) {
                     addStatusMessage(std::string("Ground control connected over UDP."));
+                    addStatusMessage(std::string("BUILDING DOES SOMETHING"));
+                    mavlinkcom::MavLinkWindCov msg;
+                    msg.wind_x = 3;
+                    msg.wind_y = 5;
+                    mav_vehicle_->sendMessage(msg);
+                    
                 }
                 else {
                     addStatusMessage(std::string("Timeout trying to connect ground control over UDP."));
@@ -1849,6 +1878,18 @@ namespace airlib
             last_distance_message_ = distance_sensor;
         }
 
+        void sendWindCov(Vector3r& wind) {
+            mavlinkcom::MavLinkWindCov wind_cov;
+            wind_cov.time_usec = getSimTime();
+            wind_cov.wind_x = wind.x();
+            wind_cov.wind_y = wind.y();
+            wind_cov.wind_z = wind.z();
+
+            if(mav_vehicle_ != nullptr) {
+                mav_vehicle_->sendMessage(wind_cov);
+            }
+        }
+
         void sendHILGps(const GeoPoint& geo_point, const Vector3r& velocity, float velocity_xy, float cog,
                         float eph, float epv, int fix_type, unsigned int satellites_visible)
         {
@@ -1871,10 +1912,16 @@ namespace airlib
             hil_gps.vel = static_cast<uint16_t>(velocity_xy * 100);
             hil_gps.cog = static_cast<uint16_t>(cog * 100);
             hil_gps.satellites_visible = static_cast<uint8_t>(15);
-
+            mavlinkcom::MavLinkWindCov wind_cov;
+            wind_cov.time_usec = getSimTime();
+            wind_cov.wind_x = 5;
+            wind_cov.wind_y = 2;
+            wind_cov.wind_z = 3;
             if (hil_node_ != nullptr) {
                 hil_node_->sendMessage(hil_gps);
+                hil_node_->sendMessage(wind_cov);
             }
+            
 
             if (hil_gps.lat < 0.1f && hil_gps.lat > -0.1f) {
                 //Utils::DebugBreak();
@@ -1901,6 +1948,7 @@ namespace airlib
             sim_time_us_ = 0;
             last_sys_time_ = 0;
             last_gps_time_ = 0;
+            last_wind_time_ = 0;
             last_update_time_ = 0;
             last_hil_sensor_time_ = 0;
             update_count_ = 0;
@@ -2005,6 +2053,7 @@ namespace airlib
         uint32_t last_sys_time_ = 0;
         unsigned long long sim_time_us_ = 0;
         uint64_t last_gps_time_ = 0;
+        uint64_t last_wind_time_ = 0;
         uint64_t last_update_time_ = 0;
         uint64_t last_hil_sensor_time_ = 0;
 

@@ -31,6 +31,11 @@ namespace airlib
         {
             unused(wind);
         }
+
+        virtual Vector3r getWind(const Vector3r& position)
+        {
+            unused(position);
+        }
         
         virtual void initWindModule(const std::string dataPath, const float updateInterval, const msr::airlib::Vector3r& defaultWind, const bool logEnable)
         {

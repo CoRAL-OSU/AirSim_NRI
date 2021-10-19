@@ -213,7 +213,21 @@ class Quaternionr(MsgpackMixin):
                 raise ValueError('length of the other Quaternionr must be 1')
         else:
             raise TypeError('unsupported operand type(s) for \'rotate\': %s and %s' % ( str(type(self)), str(type(other))) )
+    
+    def norm(self):
+        if not self.is_unit():
+            norm = math.sqrt(self.dot(self))
+            q = self.__truediv__(norm)
+            self.x_val = q.x_val
+            self.y_val = q.y_val
+            self.z_val = q.z_val
+            self.w_val = q.w_val
 
+    def sum_of_squares(self):
+        return self.dot(self)
+
+    def is_unit(self, tolerance=1e-14):
+        return abs(1.0 - self.sum_of_squares()) < tolerance
     def conjugate(self):
         return Quaternionr(-self.x_val, -self.y_val, -self.z_val, self.w_val)
 

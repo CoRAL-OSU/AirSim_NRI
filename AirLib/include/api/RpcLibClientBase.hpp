@@ -137,6 +137,7 @@ namespace airlib
         bool isRecording();
 
         void simSetWind(const Vector3r& wind) const;
+        Vector3r simGetLocalWind(const std::string& vehicle_name = "") const;
         vector<string> listVehicles();
 
         std::string getSettingsString() const;

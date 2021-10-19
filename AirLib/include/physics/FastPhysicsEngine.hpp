@@ -81,6 +81,11 @@ namespace airlib
             windManager = std::make_unique<WindModule>(dataPath, updateInterval, defaultWind, logEnable);
         }
 
+        Vector3r getWind(const Vector3r& position) override
+        {
+            return windManager->getLocalWind(position);
+        }
+
     private:
         void initPhysicsBody(PhysicsBody* body_ptr)
         {

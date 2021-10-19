@@ -63,7 +63,7 @@ public:
     virtual void continueForFrames(uint32_t frames);
 
     virtual void setWind(const msr::airlib::Vector3r& wind) const;
-
+    virtual msr::airlib::Vector3r getLocalWind(const msr::airlib::Vector3r& position) const;
     virtual void initWindModule(const std::string dataPath, const float updateInterval, const msr::airlib::Vector3r& defaultWind, const bool logEnable) const;
 
     virtual void setTimeOfDay(bool is_enabled, const std::string& start_datetime, bool is_start_datetime_dst,

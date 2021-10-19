@@ -34,6 +34,7 @@ public:
     virtual void continueForFrames(uint32_t frames) override;
 
     virtual void setWind(const msr::airlib::Vector3r& wind) const override;
+    virtual msr::airlib::Vector3r getLocalWind(const msr::airlib::Vector3r& position) const override;
     virtual void initWindModule(const std::string dataPath, const float updateInterval, const msr::airlib::Vector3r& defaultWind, const bool logEnable) const override;
 
 protected:

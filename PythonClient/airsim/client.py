@@ -923,6 +923,16 @@ class VehicleClient:
             wind (Vector3r): Wind, in World frame, NED direction, in m/s 
         """
         self.client.call('simSetWind', wind)
+    
+    def simGetLocalWind(self, vehicle_name):
+        print("testing")
+        """
+        Returns wind experienced by the provided vehicle. Vector is relative to world frame, in NED m/s
+        Args:
+            vehicle_name (string): Name of vehicle.
+        """
+        wind = self.client.call('simGetLocalWind', vehicle_name)
+        return Vector3r.from_msgpack(wind)
 
     def simCreateVoxelGrid(self, position, x, y, z, res, of):
         """

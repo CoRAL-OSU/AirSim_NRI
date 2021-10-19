@@ -518,6 +518,11 @@ __pragma(warning(disable : 4239))
             pimpl_->client.call("simSetWind", conv_wind);
         }
 
+        Vector3r RpcLibClientBase::simGetLocalWind(const std::string& vehicle_name) const
+        {
+            return pimpl_->client.call("simGetLocalWind", vehicle_name).as<RpcLibAdaptorsBase::Vector3r>().to(); //Hope this works
+        }
+
         vector<string> RpcLibClientBase::listVehicles()
         {
             return pimpl_->client.call("listVehicles").as<vector<string>>();

@@ -143,6 +143,12 @@ namespace airlib
             executor_.setFrameNumber(frameNumber);
         }
 
+        // Temporary workaround to get absolute wind value into MavlinkMultirotorApi
+        Vector3r getWind(const Vector3r& position)
+        {
+            return physics_engine_->getWind(position);
+        }
+
     private:
         bool worldUpdatorAsync(uint64_t dt_nanos)
         {

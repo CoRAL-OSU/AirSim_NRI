@@ -614,6 +614,14 @@ void WorldSimApi::setWind(const Vector3r& wind) const
     simmode_->setWind(wind);
 }
 
+WorldSimApi::Vector3r WorldSimApi::getLocalWind(const Vector3r& position) const
+{
+    Vector3r localWind;
+    localWind = simmode_->getLocalWind(position);
+    return localWind;
+}
+
+
 std::vector<std::string> WorldSimApi::listVehicles() const
 {
     std::vector<std::string> vehicle_names;

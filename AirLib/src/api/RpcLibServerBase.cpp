@@ -412,6 +412,11 @@ namespace airlib
         pimpl_->server.bind("simSetWind", [&](const RpcLibAdaptorsBase::Vector3r& wind) -> void {
             getWorldSimApi()->setWind(wind.to());
         });
+        // Todo ensure this is correct. Gets vehicle, then it's position, then the wind at that position. Converts the airlib::vector3r to rpc::vector3r
+        pimpl_->server.bind("simGetLocalWind", [&](const std::string& vehicle_name) -> RpcLibAdaptorsBase::Vector3r {
+            const auto& wind = getWorldSimApi()->getLocalWind(getVehicleSimApi(vehicle_name)->getPose().position);
+            return RpcLibAdaptorsBase::Vector3r(wind);
+        });
 
         pimpl_->server.bind("listVehicles", [&]() -> vector<string> {
             return getWorldSimApi()->listVehicles();

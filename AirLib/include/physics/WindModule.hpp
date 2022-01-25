@@ -5,9 +5,9 @@
  * Copyright 2015 Janosch Nikolic, ASL, ETH Zurich, Switzerland
  * Copyright 2015 Markus Achtelik, ASL, ETH Zurich, Switzerland
  * Copyright 2016 Geoffrey Hunter <gbmhunter@gmail.com>
- * Copyright 2020 He Bai, CoRal, OSU, USA
- * Copyright 2020 Asma Tabassum , CoRal,OSU, USA
- * Copyright 2021 Max DeSantis, CoRal, OSU, USA
+ * Copyright 2022 He Bai, CoRAL, OSU, USA
+ * Copyright 2022 Asma Tabassum , CoRAL, OSU, USA
+ * Copyright 2022 Max DeSantis, CoRAL, OSU, USA
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,8 @@
 #include "physics/PhysicsEngineBase.hpp"
 #include "common/LogFileWriter.hpp"
 #include "common/common_utils/Timer.hpp"
-#include "chrono"
+#include <chrono>
+#include <mutex>
 
 namespace msr
 {
@@ -40,61 +41,55 @@ namespace airlib
     class WindModule
     {
     public:
+        // Initiatializes WindModule with details from Airsim settings.json.
         WindModule(const std::string dataPath, const float updateInterval, const Vector3r defaultWind, const bool logEnable)
         {
-            WIND_FOLDER_PATH = dataPath;
-            UPDATE_INTERVAL = updateInterval;
-            DEFAULT_WIND = defaultWind;
-            LOG_ENABLED = logEnable;
+            WIND_FOLDER_PATH = dataPath;            // Location of wind data files.
+            UPDATE_INTERVAL = updateInterval;       // How frequently should new wind be taken from folder. Unit is in seconds.
+            DEFAULT_WIND = defaultWind;             // Default wind value if vehicle exits airspace, or no wind is loaded. Vector3r.
+            LOG_ENABLED = logEnable;                // Enables/disables the WindModules logging. Primarily for development.
+
 
             wind_module_alive = true;
-            if (LOG_ENABLED) log("Wind Module : Initializing...", Utils::kLogLevelInfo);
-
-            if (WIND_FOLDER_PATH.empty()) { // Wind data path was left default "", so only use global wind
+            WindLog("Initializing...");
+            // Wind data path was left default "". Only use global wind moving forward.
+            if (WIND_FOLDER_PATH.empty()) {
                 useSpatialWind = false;
-                if (LOG_ENABLED) log(Utils::stringf("Wind Module : Using global wind value of (%f, %f, %f).", DEFAULT_WIND.x(), DEFAULT_WIND.y(), DEFAULT_WIND.z()), Utils::kLogLevelInfo);
+                WindLog(Utils::stringf(" Using global wind value of (%f, %f, %f).", DEFAULT_WIND.x(), DEFAULT_WIND.y(), DEFAULT_WIND.z()));
             }
-            else { // Wind path was specified, attempt to read a file there.
+            // Wind path was specified, attempt to read a file there.
+            else { 
                 if (!readWindField(WIND_FOLDER_PATH + "wind_001.txt")) {
-                    log("Unable to open wind_001.txt at povided wind data path. Reverting to global wind.", Utils::kLogLevelError);
+                    WindLog("Unable to open wind_001.txt at povided wind data path. Reverting to global wind.", Utils::kLogLevelWarn);
                     useSpatialWind = false;
                 }
-                else { // Wind path was found and successfully read. Load new wind field information and spin up temporal-updating thread.
-                    if (LOG_ENABLED) log("Wind Module : Wind data file successfully read.", Utils::kLogLevelInfo);
+                // Wind path was found and successfully read. Load new wind field information and spin up temporal-updating thread.
+                else { 
+                    WindLog("First wind data file successfully read.");
                     updateWindField();
                     useSpatialWind = true;
+
+                    // Spin up temporal thread, attempt to read more data files.
                     temporalThread = std::thread(&WindModule::temporalUpdate, this);
                 }
             }
         }
 
+        // Safely stop threads, reads, etc. before shutting down.
         ~WindModule()
         {
-            if (LOG_ENABLED) log("Wind Module : Attempting to shut down...", Utils::kLogLevelInfo);
 
-            wind_module_alive = false; // Shuts down readFile
-            temporal_thread_alive = false; // Shuts down temporal thread
-            if (temporalThread.joinable()) temporalThread.join(); // Wait for temporal thread to close before continuing
+            WindLog("Shutting down...");
+
+            wind_module_alive = false;          // Shuts down readFile
+            temporal_thread_alive = false;      // Shuts down temporal thread
             if (fin.is_open()) fin.close();
+            if (temporalThread.joinable()) temporalThread.join(); // Wait for temporal thread to close before continuing
 
-            // Handle dynamically allocated smart pointers upon exit
-            vertical_spacing_factors_.reset();
-            bottom_z_.reset();
-            top_z_.reset();
-            u_.reset();
-            v_.reset();
-            w_.reset();
-            new_vertical_spacing_factors_.reset();
-            new_bottom_z_.reset();
-            new_top_z_.reset();
-            new_u_.reset();
-            new_v_.reset();
-            new_w_.reset();
-
-            if (LOG_ENABLED) log("Wind Module : Successfully shut down.", Utils::kLogLevelInfo);
+            WindLog("... Successfully shut down.");
         }
 
-        // Sets global wind if not using spatial-temporal wind data, or default (e.g. out of bounds) wind for spatial-temporal
+        // Sets global wind if not using spatial-temporal wind data, or default (e.g. out of bounds) wind for spatial-temporal. Called by FastphysicsEngine.
         void setDefaultWind(const Vector3r& wind)
         {
             DEFAULT_WIND = wind;
@@ -106,14 +101,13 @@ namespace airlib
 
             try {
                 if (!useSpatialWind) { // Return default wind if not using spatial wind
-                    vars_in_use = false;
                     return DEFAULT_WIND;
                 }
-                if (updating) { // Return previous wind if updating
-                    vars_in_use = false;
+
+                // If temporal thread is updating data, return the previously-calculated wind.
+                if(!dataMutex.try_lock()) {
                     return PREVIOUS_WIND;
                 }
-                vars_in_use = true;
 
                 Vector3r wind_velocity = Vector3r::Zero();
                 Vector3r posTemp;
@@ -125,7 +119,7 @@ namespace airlib
 
                 // Return default wind if vehicle is outside of wind field
                 if (!(posTemp.x() <= max_x_) || !(posTemp.x() >= min_x_) || !(posTemp.y() <= max_y_) || !(posTemp.y() >= min_y_)) {
-                    vars_in_use = false;
+                    dataMutex.unlock();
                     return DEFAULT_WIND;
                 }
 
@@ -225,8 +219,8 @@ namespace airlib
                     wind_velocity = TrilinearInterpolation(
                         posTemp, &wind_at_vertices.at(0), interpolation_points);
                 }
-                else { // Vehicle is outside of wind field
-                    vars_in_use = false;
+                else { // Vehicle is outside of wind field. Secondary check.
+                    dataMutex.unlock();
                     return DEFAULT_WIND;
                 }
 
@@ -237,13 +231,14 @@ namespace airlib
                 wind_velocity.z() = (-1) * vecTemp.z();
 
                 PREVIOUS_WIND = wind_velocity;
-                vars_in_use = false;
+
+                dataMutex.unlock();
 
                 return wind_velocity;
             }
             catch (const std::exception& ex) {
-                log(Utils::stringf("Wind Module : Error in getLocalWind(...) - %s", ex.what()));
-                vars_in_use = false;
+                WindLog((Utils::stringf("Error in getLocalWind(...) - %s", ex.what())));
+                dataMutex.unlock();
                 return DEFAULT_WIND;
             }
 
@@ -251,11 +246,11 @@ namespace airlib
 
     private:
         // Status flags
-        bool vars_in_use = false; // Whether the data variables (u_, v_, w_, etc. are being accessed)
-        bool temporal_thread_alive = false; // Whether the temporal-updating thread is active
-        bool updating = false; // Whether the temporal-updating thread is in the act of updating the variables
-        bool useSpatialWind = false; // Whether to calculate a spatial wind or use the default (global) value
-        bool wind_module_alive = false;
+        std::mutex dataMutex;                   // Stops temporal thread and wind calculator thread from modifying/accessing variables simultaneously.
+        bool temporal_thread_alive = false;     // Whether the temporal-updating thread is active
+        bool updating = false;                  // Whether the temporal-updating thread is in the act of updating the variables
+        bool useSpatialWind = false;            // Whether to calculate a spatial wind or use the default (global) value
+        bool wind_module_alive = false;         // Whether the module is actively running.
 
         // Temporal-updating support
         std::thread temporalThread; // Thread that updates wind every UPDATE_INTERVAL milliseconds using data from WIND_FOLDER_PATH
@@ -310,11 +305,6 @@ namespace airlib
             return (std::to_string(x / 100 % 10) + std::to_string(x / 10 % 10) + std::to_string(x % 10));
         }
 
-        void log(std::string msg, int logLevel = Utils::kLogLevelInfo)
-        {
-            airlib::Utils::log(Utils::stringf(msg.c_str()), logLevel);
-        }
-
         // Manages reading new data files and updating data in parallel thread
         void temporalUpdate()
         {
@@ -324,13 +314,13 @@ namespace airlib
             bool readAgain = true;
             int total_data_files = -1;
 
-            if (LOG_ENABLED) log("Wind Module : Spinning up temporal read thread...", Utils::kLogLevelInfo);
+            WindLog("Spinning up temporal read thread...");
 
             // Allow exiting when destructor is called or if something goes wrong
             while (temporal_thread_alive) {
                 if (readAgain) {
                     if (readWindField(WIND_FOLDER_PATH + wind_file)) { // Successfully read into file
-                        if (LOG_ENABLED) log(Utils::stringf("Wind Module - Temporal Update : Queued file (%d).", wind_file_count), Utils::kLogLevelInfo);
+                        WindLog(Utils::stringf("Temporal Update : Queued file (%d).", wind_file_count));
                     }
                     else { // Unsuccessfully read file (e.g. file does not exist or failed to parse)
                         // On unsuccessful read, we now know the maximum file number to be the previous wind_file_count
@@ -338,23 +328,23 @@ namespace airlib
 
                         wind_file_count = 1;
                         wind_file = "wind_" + getFileNumber(wind_file_count) + ".txt";
-                        if (LOG_ENABLED) log(Utils::stringf("Wind Module - Temporal Update : Unable to read next data file (%d), set total_data to %d. Reading %s", wind_file_count, total_data_files, wind_file.c_str()), Utils::kLogLevelInfo);
+                        WindLog(Utils::stringf("Temporal Update : Unable to read next data file (%d), set total_data to %d. Reading %s", wind_file_count, total_data_files, wind_file.c_str()));
                         if (total_data_files < 2 || !readWindField(WIND_FOLDER_PATH + wind_file)) {
-                            log(Utils::stringf("Unable to read next wind file: %s, exiting temporal thread.", wind_file.c_str()), Utils::kLogLevelError);
+                            WindLog(Utils::stringf("Unable to read next wind file: %s, exiting temporal thread.", wind_file.c_str()), Utils::kLogLevelError);
                             temporal_thread_alive = false;
                             return;
                         }
-                        if (LOG_ENABLED) log(Utils::stringf("Wind Module - Temporal Update : Queued file (%d).", wind_file_count), Utils::kLogLevelInfo);
+                        WindLog(Utils::stringf("Temporal Update : Queued file (%d).", wind_file_count));
                     }
 
                     wind_file_count += 1;
                     if (total_data_files > 0 && wind_file_count > total_data_files) {
                         // We've gone past maximum, reset to 1
-                        if (LOG_ENABLED) log("Wind Module - Temporal Update : Returning to first data file.", Utils::kLogLevelInfo);
+                        WindLog("Temporal Update : Returning to first data file.");
                         wind_file_count = 1;
                     }
                     wind_file = "wind_" + getFileNumber(wind_file_count) + ".txt";
-                    if (LOG_ENABLED) log("Wind Module - Temporal Update : Next wind path: " + WIND_FOLDER_PATH + wind_file);
+                    WindLog("Temporal Update : Next wind path: " + WIND_FOLDER_PATH + wind_file);
                     readAgain = false;
                 }
 
@@ -374,35 +364,43 @@ namespace airlib
         void updateWindField()
         {
 
-            updating = true;
-            while (vars_in_use && temporal_thread_alive) {
-                // Free spin until allowed to change variables
-                std::this_thread::sleep_for(std::chrono::microseconds(5));
+            updating = false;
+            // Spin until can reserve data
+            while(!updating && temporal_thread_alive) {
+                if(dataMutex.try_lock()) {
+                    updating = true;
+                }
+                else {
+                    std::this_thread::sleep_for(std::chrono::microseconds(5));
+                }
             }
 
             // Exit quickly if temporal thread shut down
             if (!temporal_thread_alive) return;
 
+            // Swap primitive data
             min_x_ = new_min_x_;
             min_x_ = new_min_x_;
             min_y_ = new_min_y_;
             max_x_ = new_max_x_;
             max_y_ = new_max_y_;
-
             n_x_ = new_n_x_;
             n_y_ = new_n_y_;
-
             res_x_ = new_res_x_;
             res_y_ = new_res_y_;
 
+            // Swap vector-based data
             std::swap(vertical_spacing_factors_, new_vertical_spacing_factors_);
             std::swap(bottom_z_, new_bottom_z_);
             std::swap(top_z_, new_top_z_);
             std::swap(u_, new_u_);
             std::swap(v_, new_v_);
             std::swap(w_, new_w_);
-            updating = false;
 
+            // Release reservation on data
+            dataMutex.unlock();
+
+            // Free up original copy of fresh data
             new_vertical_spacing_factors_.reset(nullptr);
             new_bottom_z_.reset(nullptr);
             new_top_z_.reset(nullptr);
@@ -417,7 +415,7 @@ namespace airlib
 
             fin.open(wind_field_path);
             if (!fin.is_open()) {
-                log("Unable to open wind data file!", Utils::kLogLevelError);
+                WindLog("Unable to open wind data file!", Utils::kLogLevelError);
                 return false;
             }
 
@@ -431,7 +429,7 @@ namespace airlib
             std::string data_name;
             float data;
 
-            // Parse file and gather information
+            // Parse file and gather information into "interim" variables
             while (wind_module_alive && fin >> data_name) {
                 if (data_name == "min_x:") {
                     fin >> new_min_x_;
@@ -490,7 +488,7 @@ namespace airlib
                 else {
                     std::string restOfLine;
                     getline(fin, restOfLine);
-                    log("Unknown content in wind data file. " + restOfLine, Utils::kLogLevelWarn);
+                    WindLog("Unknown content in wind data file: " + restOfLine, Utils::kLogLevelWarn);
                 }
             }
             new_max_x_ = new_min_x_ + (float)(new_n_x_ * new_res_x_);
@@ -535,6 +533,10 @@ namespace airlib
             Vector3r value = BilinearInterpolation(
                 &(position[0]), intermediate_values, &(points[8]));
             return value;
+        }
+
+        void WindLog(string info, int level = Utils::kLogLevelInfo) {
+            if (LOG_ENABLED) WindLog("Wind Module: " + info, level);
         }
     };
 

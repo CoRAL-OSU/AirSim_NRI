@@ -1,0 +1,41 @@
+{
+  "SettingsVersion": 1.2,
+  "SimMode": "Multirotor",
+  "ClockType": "SteppableClock",
+  "Vehicles": {
+      "PX4": {
+          "VehicleType": "PX4Multirotor",
+          "UseSerial": false,
+          "LockStep": true,
+          "UseTcp": true,
+          "TcpPort": 4560,
+          "QgcHostIp": "127.0.0.1",
+          "QgcPort": 14550,
+          "ControlPortLocal": 14540,
+          "ControlPortRemote": 14580,
+          "VehicleCompID": 1,
+          "VehicleSysID": 135,
+          "OffboardCompID": 1,
+          "OffboardSysID": 134,
+          "SimCompID": 42,
+          "SimSysID": 142,
+          "Sensors":{
+              "Barometer":{
+                  "SensorType": 1,
+                  "Enabled": true,
+                  "PressureFactorSigma": 0.0001825
+              }
+          }
+      }
+  },
+
+  "Wind": {
+    "EnableLog": true,
+    "UpdatePeriod": 2.5,
+    "DefaultWind": {
+      "X": 5,
+      "Y": 4,
+      "Z": 3
+    }
+  }
+}

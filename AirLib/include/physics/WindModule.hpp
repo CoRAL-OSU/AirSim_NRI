@@ -536,7 +536,8 @@ namespace airlib
         }
 
         void WindLog(string info, int level = Utils::kLogLevelInfo) {
-            if (LOG_ENABLED) WindLog("Wind Module: " + info, level);
+            string header = "Wind Module: ";
+            if (LOG_ENABLED) airlib::Utils::log(Utils::stringf((header.append(info)).c_str()), level);
         }
     };
 

@@ -80,7 +80,7 @@ This must be done using Qt Creator right now. This can be done using a process i
 
 ## Wind Configuration
 
-Wind settings are configured in the `settings.json` file. An example configuration is shown below:
+Wind settings are configured in the `settings.json` file. An example settings file is provided in the root of the project directory. An example configuration is shown below:
 
 ```
 "Wind": {
@@ -96,6 +96,8 @@ Wind settings are configured in the `settings.json` file. An example configurati
 ```
 
 `WindDataPath` should point to where the spatio-temporally varying wind data is located. `UpdatePeriod` is how many seconds the simulator waits before loading the next data file. `DefaultWind` is used if the aircraft is outside the provided area, or if no wind data is provided.
+
+The simulator expects temporal data to advance with a specific naming scheme. Subsequent data files should be numbered in the manner "wind_001.txt", "wind_002.txt" ... "wind_013.txt", etc. All data should use the same XYZ bounds and step sizes.
 
 
 ---

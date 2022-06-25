@@ -1,3 +1,105 @@
+# Wind-Aware AirSim
+
+**WARNING** These modifications are a work in progress, and should be treated as such. They may have bugs and have not been extensively tested. The entire setup has been tested using Ubuntu 18.04 and 20.04 and Unreal Engine 4.25. The most up to date version of AirSim uses Unreal Engine 4.27 - we plan to update and rebase off of the latest changes to AirSim in the future. Due to the WIP nature and relative instability of this project, no compiled binaries are available. Developer access to Unreal Engine's source (easily available) is necessary.
+
+## 1 Installing Unreal Engine
+
+1. Clone Unreal Engine (version 4.25)
+
+```shell
+git clone -b 4.25 git@github.com:EpicGames/UnrealEngine.git
+```
+
+2. Build Unreal (this will take awhile)
+
+```shell
+cd UnrealEngine
+./Setup.sh
+./GenerateProjectFiles.sh
+make
+```
+
+These steps are identical to those provided by the AirSim authors themselves, visible [here](https://microsoft.github.io/AirSim/build_linux/).
+
+## 2 Installing Wind-Aware AirSim
+
+1. Clone Wind-Aware AirSim
+
+```shell
+git clone -b spatial-temporal-wind git@github.com:CoRAL-OSU/AirSim_NRI.git
+```
+
+2. Build Wind-Aware AirSim
+
+```shell
+cd AirSim_NRI
+./setup.sh
+./build.sh
+```
+
+## 3 Installing Wind-Aware PX4 Flight Controller
+
+
+1. Clone Wind-Aware PX4
+
+```shell
+git clone -b wind_aware git@github.com:CoRAL-OSU/wind_aware_px4.git --recursive
+```
+
+2. Build Wind-Aware PX4
+
+```shell
+cd wind_aware_px4
+make px4_sitl_default none_iris
+```
+
+Further information on PX4 SITL is available from AirSim's docs, [here](https://microsoft.github.io/AirSim/px4_sitl/).
+
+## 4 Installing Wind-Aware QGroundControl
+
+1. Clone Wind-Aware QGC
+
+```shell
+git clone -b wind-display-ui git@github.com:CoRAL-OSU/wind_aware_QGC.git --recursive
+```
+
+2. Build Wind-Aware QGC
+
+This must be done using Qt Creator right now. This can be done using a process identical to what is provided by QGC's authors, available [here](https://dev.qgroundcontrol.com/master/en/getting_started/index.html). Our version of Wind-Aware QGC is for Qt version 5.15.2
+
+
+# Using Wind-Aware AirSim
+
+## Basics
+
+1. Launch the UE4 editor found at the path `<unreal install dir>/Engine/Binaries/Linux/UE4Editor`
+2. Browse for the "Blocks" environment included with AirSim, found under `<airsim install dir>/Unreal/Environments/Blocks`
+3. Convert/build the environment if necessary. The "convert-in-place" option may be under a "more options" tab.
+4. Once inside the editor, an example map of Oklahoma State University is provided. This map is generated using data from OpenStreetMap, and is not entirely collision-friendly. Information on building your own environment is found [here](https://microsoft.github.io/AirSim/unreal_custenv/). Alternatively, the "FlyingExampleMap.umap" level can be selected, for a small test environment.
+5. Press the "Play" option to begin the simulation. This uses settings found in AirSim's `settings.json` file.
+
+## Wind Configuration
+
+Wind settings are configured in the `settings.json` file. An example configuration is shown below:
+
+```
+"Wind": {
+  "EnableLog": true,
+  "WindDataPath": "/home/coral/winddata/wind_001.txt",
+  "UpdatePeriod": 2.5,
+  "DefaultWind": {
+    "X": 5,
+    "Y": 4,
+    "Z": 3
+  }
+}
+```
+
+`WindDataPath` should point to where the spatio-temporally varying wind data is located. `UpdatePeriod` is how many seconds the simulator waits before loading the next data file. `DefaultWind` is used if the aircraft is outside the provided area, or if no wind data is provided.
+
+
+---
+
 # Welcome to AirSim
 
 AirSim is a simulator for drones, cars and more, built on [Unreal Engine](https://www.unrealengine.com/) (we now also have an experimental [Unity](https://unity3d.com/) release). It is open-source, cross platform, and supports software-in-the-loop simulation with popular flight controllers such as PX4 & ArduPilot and hardware-in-loop with PX4 for physically and visually realistic simulations. It is developed as an Unreal plugin that can simply be dropped into any Unreal environment. Similarly, we have an experimental release for a Unity plugin.

@@ -97,8 +97,18 @@ Wind settings are configured in the `settings.json` file. An example settings fi
 
 `WindDataPath` should point to where the spatio-temporally varying wind data is located. `UpdatePeriod` is how many seconds the simulator waits before loading the next data file. `DefaultWind` is used if the aircraft is outside the provided area, or if no wind data is provided.
 
-The simulator expects temporal data to advance with a specific naming scheme. Subsequent data files should be numbered in the manner "wind_001.txt", "wind_002.txt" ... "wind_013.txt", etc. All data should use the same XYZ bounds and step sizes.
+The simulator expects temporal data to advance with a specific naming scheme. Subsequent data files should be numbered in the manner "wind_001.txt", "wind_002.txt" ... "wind_013.txt", etc. All data should use the same XYZ bounds and step sizes. The wind data format is adapted [here](https://github.com/ethz-asl/rotors_simulator/wiki/Adding-a-custom-wind-field-to-your-world). Example wind file may be requested by email @asma.tabassum@okstate.edu.
 
+If you are using this simulator within the research for your publication, please cite:
+```
+@inproceedings{tabassum2022preliminary,
+  title={Preliminary Design of Wind-Aware sUAS Simulation Pipeline for Urban Air Mobility},
+  author={Tabassum, Asma and DeSantis, Max and Bai, He and Fala, Nicoletta},
+  booktitle={AIAA AVIATION 2022 Forum},
+  pages={3872},
+  year={2022}
+}
+```
 
 ---
 

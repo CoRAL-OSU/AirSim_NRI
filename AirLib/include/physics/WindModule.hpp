@@ -73,6 +73,8 @@ namespace airlib
                     temporalThread = std::thread(&WindModule::temporalUpdate, this);
                 }
             }
+
+            if(useSpatialWind) WindLog("Spatial wind enabled");
         }
 
         // Safely stop threads, reads, etc. before shutting down.
@@ -98,7 +100,7 @@ namespace airlib
         // Return wind velocity vector at given position in NED
         const Vector3r getLocalWind(const Vector3r& position)
         {
-
+            
             try {
                 if (!useSpatialWind) { // Return default wind if not using spatial wind
                     return DEFAULT_WIND;
@@ -106,6 +108,7 @@ namespace airlib
 
                 // If temporal thread is updating data, return the previously-calculated wind.
                 if(!dataMutex.try_lock()) {
+                    WindLog("Data in use");
                     return PREVIOUS_WIND;
                 }
 
@@ -120,8 +123,12 @@ namespace airlib
                 // Return default wind if vehicle is outside of wind field
                 if (!(posTemp.x() <= max_x_) || !(posTemp.x() >= min_x_) || !(posTemp.y() <= max_y_) || !(posTemp.y() >= min_y_)) {
                     dataMutex.unlock();
+                    WindLog(Utils::stringf("POS: %f, %f, %f. Limits x: %f, %f; Limits y: %f, %f. outside wind field", posTemp.x(), posTemp.y(), posTemp.z(), min_x_, max_x_, min_y_, max_y_));
+                    
                     return DEFAULT_WIND;
                 }
+
+                WindLog("Here 0", Utils::kLogLevelError);
 
                 std::size_t x_inf = (size_t)floor((posTemp.x() - min_x_) / res_x_);
                 std::size_t y_inf = (size_t)floor((posTemp.y() - min_y_) / res_y_);
@@ -153,6 +160,8 @@ namespace airlib
                                                                vertical_factors_columns[2]),
                                                       vertical_factors_columns[3]);
 
+                WindLog("Here 1", Utils::kLogLevelError);
+
                 // Check if aircraft is out of wind field or not, and act accordingly.
                 if (x_inf >= 0u && y_inf >= 0u && vertical_factors_max >= 0u &&
                     x_sup <= (n_x_ - 1u) && y_sup <= (n_y_ - 1u) && vertical_factors_min <= 1u) {
@@ -182,6 +191,8 @@ namespace airlib
                         }
                     }
 
+                    WindLog("Here 2", Utils::kLogLevelError);
+
                     //Extract the wind velocities corresponding to each vertex.
                     vector<Vector3r> wind_at_vertices(n_vertices, Vector3r::Zero());
 
@@ -197,6 +208,8 @@ namespace airlib
                         float wzv = w_->at((size_t)zv);
                         wind_at_vertices.at(i).z() = wzv;
                     }
+
+                    WindLog("Here 3", Utils::kLogLevelError);
 
                     // Extract the relevant coordinate of every point needed for trilinear
                     // interpolation (first z-direction, then x-direction, then y-direction).
@@ -216,6 +229,8 @@ namespace airlib
                         }
                     }
 
+                    WindLog("Here 4", Utils::kLogLevelError);
+
                     wind_velocity = TrilinearInterpolation(
                         posTemp, &wind_at_vertices.at(0), interpolation_points);
                 }
@@ -224,6 +239,7 @@ namespace airlib
                     return DEFAULT_WIND;
                 }
 
+                WindLog("Here 5", Utils::kLogLevelError);
                 // XYZ back to NED
                 Vector3r vecTemp(wind_velocity);
                 wind_velocity.x() = vecTemp.y();
@@ -234,10 +250,13 @@ namespace airlib
 
                 dataMutex.unlock();
 
+                WindLog("Here 6", Utils::kLogLevelError);
+
                 return wind_velocity;
             }
             catch (const std::exception& ex) {
                 WindLog((Utils::stringf("Error in getLocalWind(...) - %s", ex.what())));
+                
                 dataMutex.unlock();
                 return DEFAULT_WIND;
             }
@@ -326,9 +345,10 @@ namespace airlib
                         // On unsuccessful read, we now know the maximum file number to be the previous wind_file_count
                         total_data_files = wind_file_count - 1;
 
+                        
+                        WindLog(Utils::stringf("Temporal Update : Unable to read next data file (%s), set total_data to %d.", getFileNumber(wind_file_count).c_str(), total_data_files));
                         wind_file_count = 1;
                         wind_file = "wind_" + getFileNumber(wind_file_count) + ".txt";
-                        WindLog(Utils::stringf("Temporal Update : Unable to read next data file (%d), set total_data to %d. Reading %s", wind_file_count, total_data_files, wind_file.c_str()));
                         if (total_data_files < 2 || !readWindField(WIND_FOLDER_PATH + wind_file)) {
                             WindLog(Utils::stringf("Unable to read next wind file: %s, exiting temporal thread.", wind_file.c_str()), Utils::kLogLevelError);
                             temporal_thread_alive = false;
@@ -433,21 +453,27 @@ namespace airlib
             while (wind_module_alive && fin >> data_name) {
                 if (data_name == "min_x:") {
                     fin >> new_min_x_;
+                    WindLog(Utils::stringf("New min x: %f", new_min_x_));
                 }
                 else if (data_name == "min_y:") {
                     fin >> new_min_y_;
+                    WindLog(Utils::stringf("New min y: %f", new_min_y_));
                 }
                 else if (data_name == "n_x:") {
                     fin >> new_n_x_;
+                    WindLog(Utils::stringf("Num x: %i", new_n_x_));
                 }
                 else if (data_name == "n_y:") {
                     fin >> new_n_y_;
+                    WindLog(Utils::stringf("Num y: %i", new_n_y_));
                 }
                 else if (data_name == "res_x:") {
                     fin >> new_res_x_;
+                    WindLog(Utils::stringf("Res x: %f", new_res_x_));
                 }
                 else if (data_name == "res_y:") {
                     fin >> new_res_y_;
+                    WindLog(Utils::stringf("Res y: %f", new_res_y_));
                 }
                 else if (data_name == "vertical_spacing_factors:") {
                     while (fin >> data) {
@@ -493,8 +519,10 @@ namespace airlib
             }
             new_max_x_ = new_min_x_ + (float)(new_n_x_ * new_res_x_);
             new_max_y_ = new_min_y_ + (float)(new_n_y_ * new_res_y_);
+            WindLog(Utils::stringf("New new_max_x_ : %f", new_max_x_));
+            WindLog(Utils::stringf("New new_max_y_ : %f", new_max_y_));
             fin.close();
-
+            WindLog(Utils::stringf("Successfully read %s", wind_field_path.c_str()));
             return true;
         }
 

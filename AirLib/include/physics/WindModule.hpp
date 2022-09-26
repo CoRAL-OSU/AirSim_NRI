@@ -128,7 +128,7 @@ namespace airlib
                     return DEFAULT_WIND;
                 }
 
-                WindLog("Here 0", Utils::kLogLevelError);
+                //WindLog("Here 0", Utils::kLogLevelError);
 
                 std::size_t x_inf = (size_t)floor((posTemp.x() - min_x_) / res_x_);
                 std::size_t y_inf = (size_t)floor((posTemp.y() - min_y_) / res_y_);
@@ -160,7 +160,7 @@ namespace airlib
                                                                vertical_factors_columns[2]),
                                                       vertical_factors_columns[3]);
 
-                WindLog("Here 1", Utils::kLogLevelError);
+                //WindLog("Here 1", Utils::kLogLevelError);
 
                 // Check if aircraft is out of wind field or not, and act accordingly.
                 if (x_inf >= 0u && y_inf >= 0u && vertical_factors_max >= 0u &&
@@ -191,7 +191,7 @@ namespace airlib
                         }
                     }
 
-                    WindLog("Here 2", Utils::kLogLevelError);
+                    //WindLog("Here 2", Utils::kLogLevelError);
 
                     //Extract the wind velocities corresponding to each vertex.
                     vector<Vector3r> wind_at_vertices(n_vertices, Vector3r::Zero());
@@ -209,7 +209,7 @@ namespace airlib
                         wind_at_vertices.at(i).z() = wzv;
                     }
 
-                    WindLog("Here 3", Utils::kLogLevelError);
+                    //WindLog("Here 3", Utils::kLogLevelError);
 
                     // Extract the relevant coordinate of every point needed for trilinear
                     // interpolation (first z-direction, then x-direction, then y-direction).
@@ -229,7 +229,7 @@ namespace airlib
                         }
                     }
 
-                    WindLog("Here 4", Utils::kLogLevelError);
+                    //WindLog("Here 4", Utils::kLogLevelError);
 
                     wind_velocity = TrilinearInterpolation(
                         posTemp, &wind_at_vertices.at(0), interpolation_points);
@@ -239,7 +239,7 @@ namespace airlib
                     return DEFAULT_WIND;
                 }
 
-                WindLog("Here 5", Utils::kLogLevelError);
+                //WindLog("Here 5", Utils::kLogLevelError);
                 // XYZ back to NED
                 Vector3r vecTemp(wind_velocity);
                 wind_velocity.x() = vecTemp.y();
@@ -250,7 +250,7 @@ namespace airlib
 
                 dataMutex.unlock();
 
-                WindLog("Here 6", Utils::kLogLevelError);
+                //WindLog("Here 6", Utils::kLogLevelError);
 
                 return wind_velocity;
             }

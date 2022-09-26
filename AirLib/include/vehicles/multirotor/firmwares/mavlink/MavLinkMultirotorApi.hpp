@@ -49,6 +49,9 @@ namespace airlib
     public: //methods
         virtual ~MavLinkMultirotorApi()
         {
+
+            addStatusMessage("Entered MavLinkMultiRotorApi destructor");
+
             closeAllConnection();
             if (this->connect_thread_.joinable()) {
                 this->connect_thread_.join();
@@ -56,6 +59,9 @@ namespace airlib
             if (this->telemetry_thread_.joinable()) {
                 this->telemetry_thread_.join();
             }
+
+            addStatusMessage("...MavLinkMultiRotorApi destroyed");
+
         }
 
         //non-base interface specific to MavLinKDroneController
@@ -154,13 +160,15 @@ namespace airlib
                     }
                 }
 
+                addStatusMessage("Before send wind");
                 if(now - last_wind_time_ >= 3E5) {
                     // Update wind every 1 second (1e6 us)
                     auto wind = world_->getWind(getPosition());
                     sendWindCov(wind);
 
                     last_wind_time_ = now;
-                } 
+                }
+                addStatusMessage("After send wind");
 
                 last_update_time_ = now;
 
@@ -926,6 +934,8 @@ namespace airlib
                 onDisarmed();
             }
 
+            addStatusMessage("Disconnecting 1");
+
             if (connection_ != nullptr) {
                 if (is_hil_mode_set_ && mav_vehicle_ != nullptr) {
                     setNormalMode();
@@ -936,9 +946,13 @@ namespace airlib
                 connection_->close();
             }
 
+            addStatusMessage("Disconnecting 2");
+
             if (hil_node_ != nullptr) {
                 hil_node_->close();
             }
+
+            addStatusMessage("Disconnecting 3");
 
             if (mav_vehicle_ != nullptr) {
                 auto c = mav_vehicle_->getConnection();
@@ -949,6 +963,8 @@ namespace airlib
                 mav_vehicle_->close();
                 mav_vehicle_ = nullptr;
             }
+
+            addStatusMessage("Disconnecting 4");
 
             if (video_server_ != nullptr)
                 video_server_->close();
@@ -968,8 +984,14 @@ namespace airlib
                 qgc_proxy_ = nullptr;
             }
 
+            addStatusMessage("Disconnecting 5");
+
             resetState();
+
+            addStatusMessage("Disconnecting 6");
+
         }
+
 
         void connect_thread()
         {

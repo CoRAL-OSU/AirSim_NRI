@@ -72,7 +72,8 @@ namespace airlib
         // Set Wind, for API and Settings implementation (global wind if not using spatial-temporal)
         void setWind(const Vector3r& wind) override
         {
-            windManager->setDefaultWind(wind);
+            if(windManager != nullptr)
+                windManager->setDefaultWind(wind);
         }
 
         // Setup wind module from Settings
@@ -83,7 +84,10 @@ namespace airlib
 
         Vector3r getWind(const Vector3r& position) override
         {
-            return windManager->getLocalWind(position);
+            if(windManager != nullptr) return windManager->getLocalWind(position);
+            else {
+                return Vector3r::Zero();
+            }
         }
 
     private:

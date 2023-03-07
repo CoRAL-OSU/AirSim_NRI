@@ -160,7 +160,7 @@ namespace airlib
                     }
                 }
 
-                addStatusMessage("Before send wind");
+                //addStatusMessage("Before send wind");
                 if(now - last_wind_time_ >= 3E5) {
                     // Update wind every 1 second (1e6 us)
                     auto wind = world_->getWind(getPosition());
@@ -168,7 +168,7 @@ namespace airlib
 
                     last_wind_time_ = now;
                 }
-                addStatusMessage("After send wind");
+                //addStatusMessage("After send wind");
 
                 last_update_time_ = now;
 

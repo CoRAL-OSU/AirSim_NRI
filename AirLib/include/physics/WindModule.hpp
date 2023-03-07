@@ -123,7 +123,7 @@ namespace airlib
                 // Return default wind if vehicle is outside of wind field
                 if (!(posTemp.x() <= max_x_) || !(posTemp.x() >= min_x_) || !(posTemp.y() <= max_y_) || !(posTemp.y() >= min_y_)) {
                     dataMutex.unlock();
-                    WindLog(Utils::stringf("POS: %f, %f, %f. Limits x: %f, %f; Limits y: %f, %f. outside wind field", posTemp.x(), posTemp.y(), posTemp.z(), min_x_, max_x_, min_y_, max_y_));
+                    //WindLog(Utils::stringf("POS: %f, %f, %f. Limits x: %f, %f; Limits y: %f, %f. outside wind field", posTemp.x(), posTemp.y(), posTemp.z(), min_x_, max_x_, min_y_, max_y_));
                     
                     return DEFAULT_WIND;
                 }
@@ -451,70 +451,76 @@ namespace airlib
 
             // Parse file and gather information into "interim" variables
             while (wind_module_alive && fin >> data_name) {
-                if (data_name == "min_x:") {
-                    fin >> new_min_x_;
-                    WindLog(Utils::stringf("New min x: %f", new_min_x_));
-                }
-                else if (data_name == "min_y:") {
-                    fin >> new_min_y_;
-                    WindLog(Utils::stringf("New min y: %f", new_min_y_));
-                }
-                else if (data_name == "n_x:") {
-                    fin >> new_n_x_;
-                    WindLog(Utils::stringf("Num x: %i", new_n_x_));
-                }
-                else if (data_name == "n_y:") {
-                    fin >> new_n_y_;
-                    WindLog(Utils::stringf("Num y: %i", new_n_y_));
-                }
-                else if (data_name == "res_x:") {
-                    fin >> new_res_x_;
-                    WindLog(Utils::stringf("Res x: %f", new_res_x_));
-                }
-                else if (data_name == "res_y:") {
-                    fin >> new_res_y_;
-                    WindLog(Utils::stringf("Res y: %f", new_res_y_));
-                }
-                else if (data_name == "vertical_spacing_factors:") {
-                    while (fin >> data) {
-                        new_vertical_spacing_factors_->push_back(data);
-                        if (fin.peek() == '\n') break;
+                try {
+                    if (data_name == "min_x:") {
+                        fin >> new_min_x_;
+                        WindLog(Utils::stringf("New min x: %f", new_min_x_));
+                    }
+                    else if (data_name == "min_y:") {
+                        fin >> new_min_y_;
+                        WindLog(Utils::stringf("New min y: %f", new_min_y_));
+                    }
+                    else if (data_name == "n_x:") {
+                        fin >> new_n_x_;
+                        WindLog(Utils::stringf("Num x: %i", new_n_x_));
+                    }
+                    else if (data_name == "n_y:") {
+                        fin >> new_n_y_;
+                        WindLog(Utils::stringf("Num y: %i", new_n_y_));
+                    }
+                    else if (data_name == "res_x:") {
+                        fin >> new_res_x_;
+                        WindLog(Utils::stringf("Res x: %f", new_res_x_));
+                    }
+                    else if (data_name == "res_y:") {
+                        fin >> new_res_y_;
+                        WindLog(Utils::stringf("Res y: %f", new_res_y_));
+                    }
+                    else if (data_name == "vertical_spacing_factors:") {
+                        while (fin >> data) {
+                            new_vertical_spacing_factors_->push_back(data);
+                            if (fin.peek() == '\n') break;
+                        }
+                    }
+                    else if (data_name == "bottom_z:") {
+                        while (fin >> data) {
+                            new_bottom_z_->push_back(data);
+                            if (fin.peek() == '\n') break;
+                        }
+                    }
+                    else if (data_name == "top_z:") {
+                        while (fin >> data) {
+                            new_top_z_->push_back(data);
+                            if (fin.peek() == '\n') break;
+                        }
+                    }
+                    else if (data_name == "u:") {
+                        while (fin >> data) {
+                            new_u_->push_back(data);
+                            if (fin.peek() == '\n') break;
+                        }
+                    }
+                    else if (data_name == "v:") {
+                        while (fin >> data) {
+                            new_v_->push_back(data);
+                            if (fin.peek() == '\n') break;
+                        }
+                    }
+                    else if (data_name == "w:") {
+                        while (fin >> data) {
+                            new_w_->push_back(data);
+                            if (fin.peek() == '\n') break;
+                        }
+                    }
+                    else {
+                        std::string restOfLine;
+                        getline(fin, restOfLine);
+                        WindLog("Unknown content in wind data file: " + restOfLine, Utils::kLogLevelWarn);
                     }
                 }
-                else if (data_name == "bottom_z:") {
-                    while (fin >> data) {
-                        new_bottom_z_->push_back(data);
-                        if (fin.peek() == '\n') break;
-                    }
-                }
-                else if (data_name == "top_z:") {
-                    while (fin >> data) {
-                        new_top_z_->push_back(data);
-                        if (fin.peek() == '\n') break;
-                    }
-                }
-                else if (data_name == "u:") {
-                    while (fin >> data) {
-                        new_u_->push_back(data);
-                        if (fin.peek() == '\n') break;
-                    }
-                }
-                else if (data_name == "v:") {
-                    while (fin >> data) {
-                        new_v_->push_back(data);
-                        if (fin.peek() == '\n') break;
-                    }
-                }
-                else if (data_name == "w:") {
-                    while (fin >> data) {
-                        new_w_->push_back(data);
-                        if (fin.peek() == '\n') break;
-                    }
-                }
-                else {
-                    std::string restOfLine;
-                    getline(fin, restOfLine);
-                    WindLog("Unknown content in wind data file: " + restOfLine, Utils::kLogLevelWarn);
+                catch(...)
+                {
+                    WindLog("Error reading file", Utils::kLogLevelError);
                 }
             }
             new_max_x_ = new_min_x_ + (float)(new_n_x_ * new_res_x_);

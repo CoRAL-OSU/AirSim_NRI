@@ -296,7 +296,9 @@ namespace airlib
             const real_T air_density = body.getEnvironment().getState().air_density;
 
             // Use relative velocity of the body wrt wind
-            const Vector3r relative_vel = linear_vel - local_wind;
+
+            // Modified per Asma's request
+            const Vector3r relative_vel = linear_vel; //- local_wind;
             const Vector3r linear_vel_body = VectorMath::transformToBodyFrame(relative_vel, orientation);
 
             for (uint vi = 0; vi < body.dragVertexCount(); ++vi) {
@@ -423,17 +425,17 @@ namespace airlib
                 }
             }
 
-            computeNextPose(dt, current.pose, avg_linear, avg_angular, next);
+            computeNextPose(dt, current.pose, avg_linear, avg_angular, wind, next);
 
             //Utils::log(Utils::stringf("N-VEL %s %f: ", VectorMath::toString(next.twist.linear).c_str(), dt));
             //Utils::log(Utils::stringf("N-POS %s %f: ", VectorMath::toString(next.pose.position).c_str(), dt));
         }
 
-        static void computeNextPose(TTimeDelta dt, const Pose& current_pose, const Vector3r& avg_linear, const Vector3r& avg_angular, Kinematics::State& next)
+        static void computeNextPose(TTimeDelta dt, const Pose& current_pose, const Vector3r& avg_linear, const Vector3r& avg_angular,  const Vector3r& local_wind, Kinematics::State& next)
         {
             real_T dt_real = static_cast<real_T>(dt);
 
-            next.pose.position = current_pose.position + avg_linear * dt_real;
+            next.pose.position = current_pose.position + avg_linear * dt_real + local_wind * dt_real;
 
             //use angular velocty in body frame to calculate angular displacement in last dt seconds
             real_T angle_per_unit = avg_angular.norm();

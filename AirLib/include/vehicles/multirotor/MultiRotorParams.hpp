@@ -44,7 +44,7 @@ namespace airlib
             Vector3r body_box;
 
             /*********** optional parameters with defaults ***********/
-            real_T linear_drag_coefficient = 1.3f / 4.0f;
+            real_T linear_drag_coefficient = 0.1; //1.3f / 4.0f;
             //sample value 1.3 from http://klsin.bpmsg.com/how-fast-can-a-quadcopter-fly/, but divided by 4 to account
             // for nice streamlined frame design and allow higher top speed which is more fun.
             //angular coefficient is usually 10X smaller than linear, however we should replace this with exact number

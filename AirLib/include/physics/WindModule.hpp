@@ -85,9 +85,9 @@ namespace airlib
 
             wind_module_alive = false;          // Shuts down readFile
             temporal_thread_alive = false;      // Shuts down temporal thread
-            if (fin.is_open()) fin.close();
-            if (temporalThread.joinable()) temporalThread.join(); // Wait for temporal thread to close before continuing
 
+            if (temporalThread.joinable()) temporalThread.join(); // Wait for temporal thread to close before continuing
+            if (fin.is_open()) fin.close();
             WindLog("... Successfully shut down.");
         }
 
